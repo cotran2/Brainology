@@ -3,8 +3,8 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 def get_angles(pos, i, d_model):
-  angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
-  return pos * angle_rates
+    angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
+    return pos * angle_rates
 
 
 def positional_encoding(position, d_model):

@@ -5,14 +5,13 @@ from __future__ import print_function
 from sklearn.decomposition import PCA, KernelPCA,IncrementalPCA
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
+import tensorflow as tf
 import numpy as np
 import speechpy
 import glob
 import os
+import re
 
-SPACE_TOKEN = '<space>'
-SPACE_INDEX = 0
-FIRST_INDEX = ord('a') - 1  # 0 is reserved to space
 
 def unpadding(data,length):
     result = []
@@ -20,7 +19,31 @@ def unpadding(data,length):
         result.append(x[:int(y)])
     return result
 
-def inverse_ctc_format(target):
+
+def get_dictionary(label_dir, params):
+    with open(label_dir, 'r') as txt:
+        data = txt.readlines()
+    data = data[:params.number_sentence]
+    word_list = []
+    raw_text = []
+    for line in data:
+        sentence = re.findall('\: (.*)\n', line.lower())[0]
+        sentence = re.sub(r"[^a-zA-Z]+", ' ', sentence)
+        words_vector = []
+        sentence = sentence.split(' ')
+        for word in sentence:
+            if word != '':
+                words_vector.append(word.lower())
+                word_list.append(word.lower())
+        raw_text.append(words_vector)
+    word_list = pd.Series(word_list).unique()
+    dict = {'<start>': 1, '<end>': 2}
+    for word in word_list:
+        if word not in dict:
+            dict[word] = len(dict) +1
+    return dict
+
+def inverse_attention_format(target):
     result = []
     for i in range(len(target)):
         str_decoded = ''.join([chr(x) for x in np.asarray(target[i]) + FIRST_INDEX])
@@ -32,39 +55,35 @@ def inverse_ctc_format(target):
     return np.asarray(result)
 
 
-def convert_inputs_to_ctc_format(inputs, target_text):
+def convert_inputs_to_attention_format(inputs, target_text, params):
     train_inputs = np.asarray(inputs)
     train_inputs = process(train_inputs)
     train_seq_len = train_inputs.shape[0]
-    original = ' '.join(target_text.strip().lower().split(' ')).replace('.', '').replace('?', '').replace(',', '').replace("'", '').replace('!', '').replace('-', '')
-    targets = original.replace(' ', '  ')
-    targets = targets.split(' ')
-    targets = np.hstack([SPACE_TOKEN if x == '' else list(x) for x in targets])
-
+    original = target_text.lower()
+    target_text = '<start>'+ target_text.lower() + ' <end>'
+    target_text = target_text.lower().split(' ')
     # Transform char into index
-    targets = np.asarray([SPACE_INDEX if x == SPACE_TOKEN else ord(x) - FIRST_INDEX
-                          for x in targets])
+    targets = np.asarray([params.dictionary[x] for x in target_text])
     return train_inputs, targets, train_seq_len, original
 
 def load_data(params):
-
     cwd = os.path.dirname(os.path.dirname(os.getcwd()))
     eeg_dir = cwd + "/data/eeg_{}/trimmed_feature_{}".format(params.freq, params.feature)
     mfcc_dir = cwd + "/data/mfcc_{}/trimmed".format(params.freq)
-    label_dir = cwd + "/labels_text/sentences.txt"
+    label_dir = cwd + "/data/labels_text/sentences.txt"
     eeg_paths = glob.glob(eeg_dir + "/*.csv")
     mfcc_paths = glob.glob(mfcc_dir + "/*.csv")
-
+    input_set = []
+    target_set = []
+    seq_len_set = []
+    original_set = []
     labels_list = list()
     with open(label_dir, 'r') as txt:
         for line in txt.readlines():
             labels_list.append(line.split(':')[-1].split('.')[0])
     labels_list = labels_list[:params.number_sentence]
-    input_set = []
-    target_set = []
-    seq_len_set = []
-    original_set = []
-
+    dictionary = get_dictionary(label_dir,params)
+    params.dictionary = dictionary
     for mfcc_path, eeg_path in zip(mfcc_paths, eeg_paths):
         if params.data == 'fusion':
             mfcc = pd.read_csv(mfcc_path)
@@ -81,12 +100,11 @@ def load_data(params):
             df = eeg
         else:
             raise ('Invalide type of data input')
-
         for i in range(params.number_sentence):
             df.columns = [str(i) for i in range(len(df.columns) - 1)] + ['sentence']
             append_data = df[df['sentence'] == i + 1][df.columns[:-1]].values
-            append_data, append_targets, append_seq_len, original = convert_inputs_to_ctc_format(append_data,
-                                                              labels_list[i])
+            append_data, append_targets, append_seq_len, original = convert_inputs_to_attention_format(append_data,
+                                                              labels_list[i],params)
             input_set.append(append_data)
             seq_len_set.append(append_seq_len)
             target_set.append(append_targets)
