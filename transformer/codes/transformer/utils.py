@@ -311,11 +311,11 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
 
-def plot_attention_weights(attention, sentence, seq_len, layer):
+def plot_attention_weights(attention, sentence, seq_len, layer, params):
 
     attention = tf.squeeze(attention[layer], axis=0)
     cwd = os.path.dirname(os.path.dirname(os.getcwd()))
-    graph_path = cwd + "/data/graphs/" +layer
+    graph_path = cwd + "/data/graphs/" + str(params.number_sentence) + '_' +layer
     if not os.path.exists(graph_path):
         os.makedirs(graph_path)
     for head in range(attention.shape[0]):
@@ -331,7 +331,7 @@ def plot_attention_weights(attention, sentence, seq_len, layer):
 
         ax.set_xlabel('Head {}'.format(head + 1))
         ax.set_ylabel("Predicted")
-        
+
         p.savefig(graph_path+'/{}.png'.format(head))
 
 def evaluate(inp,params):
@@ -387,6 +387,6 @@ def translate(inp, label,seq_len, params, plot= None , print_result = True):
         print('Predicted translation: {}'.format(predicted_sentence))
 
     if plot:
-        plot_attention_weights(attention_weights, predicted_sentence, seq_len, plot)
+        plot_attention_weights(attention_weights, predicted_sentence, seq_len, plot, params)
 
     return  new_label,predicted_sentence

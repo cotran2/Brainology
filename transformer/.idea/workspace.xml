@@ -21,6 +21,21 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/codes/transformer/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/codes/transformer/train.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/codes/transformer/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/codes/transformer/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/0.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/1.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/10.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/11.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/12.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/13.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/14.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/3.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/4.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/5.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/6.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/7.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/8.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/graphs/decoder_layer4_block2/9.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../voice_activity_detection/code" beforeDir="false" afterPath="$PROJECT_DIR$/../voice_activity_detection/code" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />

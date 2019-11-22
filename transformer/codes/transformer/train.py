@@ -1,9 +1,11 @@
 from transformer import *
 from utils import *
 import tensorflow as tf
-import numpy
+import numpy as np
+import pandas as pd
 import time
 from jiwer import wer as jwer
+import os
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
@@ -21,7 +23,7 @@ class parameters():
     data = 'eeg'
     seed = 1234
     n_batches = 10
-    epochs = 1
+    epochs = 50
 
 def train(number_sentence):
     """
@@ -152,10 +154,10 @@ def train(number_sentence):
             print('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(
                 epoch + 1, batch, train_loss.result(), train_accuracy.result()))
 
-        if (epoch + 1) % 5 == 0:
-            ckpt_save_path = ckpt_manager.save()
-            print('Saving checkpoint for epoch {} at {}'.format(epoch + 1,
-                                                                ckpt_save_path))
+        # if (epoch + 1) % 5 == 0:
+        #     ckpt_save_path = ckpt_manager.save()
+        #     print('Saving checkpoint for epoch {} at {}'.format(epoch + 1,
+        #                                                         ckpt_save_path))
 
         print('Epoch {} Train Loss {:.4f} Train Accuracy {:.4f} Val Loss {:.4f} Val Accuracy {:.4f}'.format(
                                                             epoch + 1,
@@ -179,6 +181,18 @@ def train(number_sentence):
     wer = jwer(ground_truth,predicted)
     print("word error rate : {}".format(wer))
     _, _ = translate(inp, tar, int(seq_len.numpy()), params, 'decoder_layer4_block2', False)
+    return wer
+
 if __name__ == "__main__":
-    number_sentence = 3
-    train(number_sentence)
+    number_sentence = [3,5,10,20]
+    wer_lst = []
+    cwd = os.path.dirname(os.path.dirname(os.getcwd()))
+    result_path = cwd + "/data/results/"
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
+
+    for i in number_sentence:
+        wer_lst.append(train(i))
+        pd.DataFrame(wer_lst).to_csv(result_path+
+                                     '/result_{}_sentences.csv'.format(i),
+                                     index = False)
