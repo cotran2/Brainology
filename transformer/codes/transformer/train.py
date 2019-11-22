@@ -3,15 +3,16 @@ from utils import *
 import tensorflow as tf
 import numpy
 import time
+from jiwer import wer as jwer
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
 class parameters():
-    number_sentence = 10
+    number_sentence = 30
     num_layers = 4
     d_model = 90
-    dff = 512
-    num_heads = 10
+    dff = 1024
+    num_heads = 15
     input_vocab_size = 0
     target_vocab_size = 0
     dropout_rate = 0.1
@@ -20,7 +21,7 @@ class parameters():
     data = 'eeg'
     seed = 1234
     n_batches = 10
-    epochs = 50
+    epochs = 10
 
 def train():
     """
@@ -83,20 +84,16 @@ def train():
     # batch sizes (the last batch is smaller), use input_signature to specify
     # more generic shapes.
 
-    train_step_signature = [
-        tf.TensorSpec(shape=(None, None, params.d_model), dtype=tf.float32),
-        tf.TensorSpec(shape= (None), dtype = tf.int32),
-        tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-    ]
 
-    @tf.function(input_signature=train_step_signature)
-    def train_step(inp, seq_len,tar):
+
+    @tf.function
+    def train_step(inp,tar):
         tar_inp = tar[:, :-1]
         tar_real = tar[:, 1:]
         # enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
         combined_mask = create_combined_mask(tar=tar_inp)
         with tf.GradientTape() as tape:
-            predictions, _ = transformer(inp, seq_len, tar_inp,
+            predictions, _ = transformer(inp, tar_inp,
                                          True,
                                          None,
                                          combined_mask,
@@ -117,9 +114,7 @@ def train():
 
         # inp -> portuguese, tar -> english
         for (batch, (inp, tar)) in enumerate(train_dataset):
-            inp = tf.reshape(inp,[inp.shape[0],inp.shape[1],-1])
-            seq_len = tf.shape(inp)[1]
-            train_step(inp, seq_len, tar)
+            train_step(inp, tar)
 
         if batch % 50 == 0:
             print('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(
@@ -139,7 +134,14 @@ def train():
         Evaluation + Test
     """
     params.transformer = transformer
+    ground_truth = []
+    predicted = []
+    wer = None
     for inp,tar in test_dataset:
-        translate(inp,tar, params)
+        gtruth, pred = translate(inp,tar, params)
+        ground_truth.append(gtruth)
+        predicted.append(pred)
+    wer = jwer(ground_truth,predicted)
+    print("word error rate : {}".format(wer))
 if __name__ == "__main__":
     train()

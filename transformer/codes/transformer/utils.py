@@ -228,10 +228,8 @@ def create_padding_mask(seq):
     :return: [batch_size, 1, 1, seq_len_k]
     '''
     if seq.dtype != np.int32:
-        print("float")
         seq = tf.cast(tf.math.equal(seq, 0.), tf.float32)
     else:
-        print("int")
         seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
 
     # add extra dimensions so that we can add the padding
@@ -360,13 +358,13 @@ def evaluate(inp,params):
     for i in range(params.max_length):
         enc_padding_mask, combined_mask, dec_padding_mask = create_masks(
             encoder_input, output)
-
+        combined_mask = create_combined_mask(tar=output)
         # predictions.shape == (batch_size, seq_len, vocab_size)
         predictions, attention_weights = params.transformer(encoder_input,
                                                      output,
                                                      False,
                                                      None,
-                                                     None,
+                                                     combined_mask,
                                                      None)
 
         # select the last word from the seq_len dimension
@@ -385,17 +383,19 @@ def evaluate(inp,params):
     return tf.squeeze(output, axis=0), attention_weights
 
 
-def translate(inp, label, params, plot= None ):
+def translate(inp, label, params, plot= None , print_result = True):
     result, attention_weights = evaluate(inp, params)
     dictionary = params.dictionary
     dictionary = {v: k for k, v in dictionary.items()}
-    predicted_sentence = [dictionary[int(k.numpy())] for k in result[1:]]
-    new_label = []
-    for k in label:
-        if int(k.numpy())!=0:
-            new_label.append(int(k.numpy()))
-    print('Input: {}'.format(new_label))
-    print('Predicted translation: {}'.format(predicted_sentence))
+    predicted_sentence = [dictionary[k.numpy()] for k in result[1:]]
+    new_label = [dictionary[k] for k in label.numpy()[0] if k!=0 ]
+    new_label = ' '.join(new_label[1:-1])
+    predicted_sentence = ' '.join(predicted_sentence)
+    if print_result:
+        print('Input: {}'.format(new_label))
+        print('Predicted translation: {}'.format(predicted_sentence))
 
     if plot:
         plot_attention_weights(attention_weights, inp, result, plot)
+
+    return  new_label,predicted_sentence
