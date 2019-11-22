@@ -11,6 +11,7 @@ import speechpy
 import glob
 import os
 import re
+PAD = -1
 
 
 def unpadding(data,length):
@@ -60,7 +61,7 @@ def convert_inputs_to_attention_format(inputs, target_text, params):
     train_inputs = process(train_inputs)
     train_seq_len = train_inputs.shape[0]
     original = target_text.lower()
-    target_text = '<start>'+ target_text.lower() + ' <end>'
+    target_text = '<start> '+ target_text.lower() + '<end>'
     target_text = target_text.lower().split(' ')
     # Transform char into index
     targets = np.asarray([params.dictionary[x] for x in target_text])
@@ -80,7 +81,9 @@ def load_data(params):
     labels_list = list()
     with open(label_dir, 'r') as txt:
         for line in txt.readlines():
-            labels_list.append(line.split(':')[-1].split('.')[0])
+            sentence = re.findall('\: (.*)\n', line.lower())[0]
+            sentence = re.sub(r"[^a-zA-Z]+", ' ', sentence).replace("'", '').replace('!', '').replace('-', '').replace("?", '')
+            labels_list.append(sentence)
     labels_list = labels_list[:params.number_sentence]
     dictionary = get_dictionary(label_dir,params)
     params.dictionary = dictionary
@@ -215,35 +218,81 @@ def pad_sequences(sequences, maxlen=None, dtype=np.float32,
             raise ValueError('Padding type "%s" not understood' % padding)
     return x, lengths
 
+#####################################################
 
+#####################################################
 def create_padding_mask(seq):
-    seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+    '''
 
-    # add extra dimensions to add the padding
+    :param seq: [batch_size * seq_len_k] # k means key in MultiheadAttention
+    :return: [batch_size, 1, 1, seq_len_k]
+    '''
+    if seq.dtype != np.int32:
+        print("float")
+        seq = tf.cast(tf.math.equal(seq, 0.), tf.float32)
+    else:
+        print("int")
+        seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+
+    # add extra dimensions so that we can add the padding
     # to the attention logits.
-    return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
+    return seq[:, tf.newaxis,tf.newaxis, :]  # (batch_size, 1,1, seq_len)
 
+#####################################################
+
+#####################################################
 def create_look_ahead_mask(size):
+    '''
+
+    :param size: == seq_len_k
+    :return: (seq_len_q, seq_len_k) 只用在decoderblock1，此时qkv的len全相同，因为block1是对taget的encode
+    '''
     mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
     return mask  # (seq_len, seq_len)
 
+#####################################################
 
+#####################################################
 def create_masks(inp, tar):
+    '''
+
+    :param inp: [batch_size * seq_len_k_of_encoder ]
+    :param tar: [batch_size * seq_len_q_of_decoder_block1 ]
+    :return:
+    '''
     # Encoder padding mask
     enc_padding_mask = create_padding_mask(inp)
 
     # Used in the 2nd attention block in the decoder.
     # This padding mask is used to mask the encoder outputs.
+    # encoder outputs [batch_size * seq_len * d_model] 中间那一维相比原始encoder的input不变，所以就按照inp计算了
     dec_padding_mask = create_padding_mask(inp)
 
     # Used in the 1st attention block in the decoder.
-    # It is used to pad and mask future tokens in the input received by
-    # the decoder.
+    # It is used to pad and mask future tokens in the input received by the decoder.
     look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
     dec_target_padding_mask = create_padding_mask(tar)
     combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
 
+    # print('enc_padding_mask',enc_padding_mask)
+    # print('combined_mask', combined_mask)
+    # print('dec_padding_mask', dec_padding_mask)
+
     return enc_padding_mask, combined_mask, dec_padding_mask
+
+def create_DecBlock1_pad_mask(tar):
+    tar = tf.cast(tf.math.equal(tar, PAD), tf.float32)
+    return tar[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1,1, seq_len)
+
+def create_combined_mask(tar):
+    # Used in the 1st attention block in the decoder.
+    # It is used to pad and mask future tokens in the input received by the decoder.
+    look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
+    dec_target_padding_mask = create_DecBlock1_pad_mask(tar)
+    combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
+
+    return combined_mask
+
 
 
 class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -341,8 +390,11 @@ def translate(inp, label, params, plot= None ):
     dictionary = params.dictionary
     dictionary = {v: k for k, v in dictionary.items()}
     predicted_sentence = [dictionary[int(k.numpy())] for k in result[1:]]
-
-    print('Input: {}'.format(label))
+    new_label = []
+    for k in label:
+        if int(k.numpy())!=0:
+            new_label.append(int(k.numpy()))
+    print('Input: {}'.format(new_label))
     print('Predicted translation: {}'.format(predicted_sentence))
 
     if plot:
