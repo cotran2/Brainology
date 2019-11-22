@@ -19,7 +19,6 @@
       <change afterPath="$PROJECT_DIR$/codes/transformer/checkpoints/train/ckpt-9.data-00001-of-00002" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/codes/transformer/checkpoints/train/ckpt-9.index" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/codes/transformer/testing.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/codes/transformer/testing.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/codes/transformer/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/codes/transformer/train.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/codes/transformer/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/codes/transformer/utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../voice_activity_detection/code" beforeDir="false" afterPath="$PROJECT_DIR$/../voice_activity_detection/code" afterDir="false" />

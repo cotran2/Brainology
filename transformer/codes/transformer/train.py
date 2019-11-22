@@ -21,7 +21,7 @@ class parameters():
     data = 'eeg'
     seed = 1234
     n_batches = 10
-    epochs = 50
+    epochs = 1
 
 def train(number_sentence):
     """
@@ -30,19 +30,27 @@ def train(number_sentence):
     params = parameters()
     tf.random.set_seed(params.seed)
     params.number_sentence = number_sentence
-    input_set, target_set, seq_len_set, original_set = load_data(params)
-    input_set, _ = pad_sequences(input_set, dtype=np.float32)
-    target_set, _ = pad_sequences(target_set, dtype=np.int64)
+    input_set, target_set, _, _ = load_data(params)
+    input_set, inp_seq_len = pad_sequences(input_set, dtype=np.float32)
+    target_set, target_seq_len = pad_sequences(target_set, dtype=np.int64)
     params.d_model = input_set.shape[-1]
     params.target_vocab_size = len(params.dictionary)+1
     params.max_length = len(target_set[0])
+    """
+        Splitting
+    """
     x_train, x_test, y_train, y_test = train_test_split(input_set, target_set, test_size = 0.2, random_state = 42)
-    x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.2, random_state=42)
-    test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).shuffle(
+    x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.5, random_state=42)
+    """
+        Seq_len
+    """
+    inp_seq_train, inp_seq_test, target_seq_train, target_seq_test = train_test_split(inp_seq_len, target_seq_len, test_size=0.2, random_state=42)
+    inp_seq_val, inp_seq_test, target_seq_val, target_seq_test = train_test_split(inp_seq_test, target_seq_test, test_size=0.5, random_state=42)
+    test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test,inp_seq_val)).shuffle(
         8192, seed=params.seed).batch(1)
-    val_dataset =  tf.data.Dataset.from_tensor_slices((x_test, y_test)).shuffle(
+    val_dataset =  tf.data.Dataset.from_tensor_slices((x_test, y_test,inp_seq_test)).shuffle(
         8192, seed=params.seed).batch(1)
-    train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(
+    train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train,inp_seq_train)).shuffle(
         8192, seed=params.seed).batch(params.n_batches)
     """
         Define loss, model, optimizer
@@ -136,9 +144,9 @@ def train(number_sentence):
         val_loss.reset_states()
         val_accuracy.reset_states()
         # inp -> portuguese, tar -> english
-        for (batch, (inp, tar)) in enumerate(train_dataset):
+        for (batch, (inp, tar,seq_len)) in enumerate(train_dataset):
             train_step(inp, tar)
-        for (batch, (inp, tar)) in enumerate(train_dataset):
+        for (batch, (inp, tar, seq_len)) in enumerate(val_dataset):
             eval_step(inp, tar)
         if batch % 50 == 0:
             print('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(
@@ -164,12 +172,13 @@ def train(number_sentence):
     ground_truth = []
     predicted = []
     wer = None
-    for inp,tar in test_dataset:
-        gtruth, pred = translate(inp,tar, params, True, False)
+    for inp,tar,seq_len in test_dataset:
+        gtruth, pred = translate(inp,tar,seq_len, params, None, False)
         ground_truth.append(gtruth)
         predicted.append(pred)
     wer = jwer(ground_truth,predicted)
     print("word error rate : {}".format(wer))
+    _, _ = translate(inp, tar, int(seq_len.numpy()), params, 'decoder_layer4_block2', False)
 if __name__ == "__main__":
     number_sentence = 3
     train(number_sentence)

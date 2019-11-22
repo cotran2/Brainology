@@ -312,15 +312,17 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 
 def plot_attention_weights(attention, sentence, seq_len, layer):
-    fig = plt.figure(figsize=(20, 10))
 
     attention = tf.squeeze(attention[layer], axis=0)
-
+    cwd = os.path.dirname(os.path.dirname(os.getcwd()))
+    graph_path = cwd + "/data/graphs/" +layer
+    if not os.path.exists(graph_path):
+        os.makedirs(graph_path)
     for head in range(attention.shape[0]):
-        ax = fig.add_subplot(3, 5, head + 1)
+        p, ax = plt.subplots(figsize=(20, 10))
 
         # plot the attention weights
-        ax.matshow(attention[head][:-1, :seq_len], cmap='viridis')
+        ax = sns.heatmap(attention[head][:-1, :seq_len], cmap='viridis')
 
         fontdict = {'fontsize': 10}
 
@@ -329,9 +331,8 @@ def plot_attention_weights(attention, sentence, seq_len, layer):
 
         ax.set_xlabel('Head {}'.format(head + 1))
         ax.set_ylabel("Predicted")
-
-    plt.show()
-
+        
+        p.savefig(graph_path+'/{}.png'.format(head))
 
 def evaluate(inp,params):
     start_token = params.dictionary['<start>']
@@ -373,7 +374,7 @@ def evaluate(inp,params):
     return tf.squeeze(output, axis=0), attention_weights
 
 
-def translate(inp, label, params, plot= None , print_result = True):
+def translate(inp, label,seq_len, params, plot= None , print_result = True):
     result, attention_weights = evaluate(inp, params)
     dictionary = params.dictionary
     dictionary = {v: k for k, v in dictionary.items()}
@@ -386,6 +387,6 @@ def translate(inp, label, params, plot= None , print_result = True):
         print('Predicted translation: {}'.format(predicted_sentence))
 
     if plot:
-        plot_attention_weights(attention_weights, inp, result, plot)
+        plot_attention_weights(attention_weights, predicted_sentence, seq_len, plot)
 
     return  new_label,predicted_sentence
