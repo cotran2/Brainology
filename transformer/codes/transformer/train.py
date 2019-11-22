@@ -21,22 +21,6 @@ class parameters():
     n_batches = 10
     epochs = 100
 
-def create_masks(inp, tar):
-    # Encoder padding mask
-    enc_padding_mask = create_padding_mask(inp)
-
-    # Used in the 2nd attention block in the decoder.
-    # This padding mask is used to mask the encoder outputs.
-    dec_padding_mask = create_padding_mask(inp)
-
-    # Used in the 1st attention block in the decoder.
-    # It is used to pad and mask future tokens in the input received by
-    # the decoder.
-    look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
-    dec_target_padding_mask = create_padding_mask(tar)
-    combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
-
-    return enc_padding_mask, combined_mask, dec_padding_mask
 def train():
     """
     Get dataset and parameters
@@ -104,7 +88,7 @@ def train():
         tar_inp = tar[:, :-1]
         tar_real = tar[:, 1:]
 
-        enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
+        # enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
 
         with tf.GradientTape() as tape:
             predictions, _ = transformer(inp, tar_inp,
