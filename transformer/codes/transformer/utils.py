@@ -7,6 +7,8 @@ from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import tensorflow as tf
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 import speechpy
 import glob
 import os
@@ -309,37 +311,25 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
 
-def plot_attention_weights(attention, sentence, result, layer):
-    fig = plt.figure(figsize=(16, 8))
-
-    sentence = tokenizer_pt.encode(sentence)
+def plot_attention_weights(attention, sentence, seq_len, layer):
+    fig = plt.figure(figsize=(20, 10))
 
     attention = tf.squeeze(attention[layer], axis=0)
 
     for head in range(attention.shape[0]):
-        ax = fig.add_subplot(2, 4, head + 1)
+        ax = fig.add_subplot(3, 5, head + 1)
 
         # plot the attention weights
-        ax.matshow(attention[head][:-1, :], cmap='viridis')
+        ax.matshow(attention[head][:-1, :seq_len], cmap='viridis')
 
         fontdict = {'fontsize': 10}
 
-        ax.set_xticks(range(len(sentence) + 2))
-        ax.set_yticks(range(len(result)))
-
-        ax.set_ylim(len(result) - 1.5, -0.5)
-
-        ax.set_xticklabels(
-            ['<start>'] + [tokenizer_pt.decode([i]) for i in sentence] + ['<end>'],
-            fontdict=fontdict, rotation=90)
-
-        ax.set_yticklabels([tokenizer_en.decode([i]) for i in result
-                            if i < tokenizer_en.vocab_size],
+        ax.set_yticklabels(sentence.split(' '),
                            fontdict=fontdict)
 
         ax.set_xlabel('Head {}'.format(head + 1))
+        ax.set_ylabel("Predicted")
 
-    plt.tight_layout()
     plt.show()
 
 
