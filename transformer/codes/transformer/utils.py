@@ -308,12 +308,12 @@ def evaluate(inp,params):
     decoder_input = [start_token]
     output = tf.expand_dims(decoder_input, 0)
 
-    for i in range(MAX_LENGTH):
+    for i in range(params.max_length):
         enc_padding_mask, combined_mask, dec_padding_mask = create_masks(
             encoder_input, output)
 
         # predictions.shape == (batch_size, seq_len, vocab_size)
-        predictions, attention_weights = transformer(encoder_input,
+        predictions, attention_weights = params.transformer(encoder_input,
                                                      output,
                                                      False,
                                                      None,
@@ -337,10 +337,10 @@ def evaluate(inp,params):
 
 
 def translate(inp, label, params, plot= None ):
-    result, attention_weights = evaluate(inp)
+    result, attention_weights = evaluate(inp, params)
     dictionary = params.dictionary
     dictionary = {v: k for k, v in dictionary.items()}
-    predicted_sentence = [dictionary[k] for k in result]
+    predicted_sentence = [dictionary[int(k.numpy())] for k in result[1:]]
 
     print('Input: {}'.format(label))
     print('Predicted translation: {}'.format(predicted_sentence))

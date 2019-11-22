@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy
 import time
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 class parameters():
     number_sentence = 3
@@ -19,7 +20,7 @@ class parameters():
     data = 'eeg'
     seed = 1234
     n_batches = 10
-    epochs = 100
+    epochs = 50
 
 def train():
     """
@@ -31,7 +32,11 @@ def train():
     target_set, _ = pad_sequences(target_set, dtype=np.int64)
     params.d_model = input_set.shape[-1]
     params.target_vocab_size = len(params.dictionary)+1
-    full_dataset = tf.data.Dataset.from_tensor_slices((input_set, target_set)).shuffle(
+    params.max_length = len(target_set[0])
+    x_train, x_test, y_train, y_test = train_test_split(input_set, target_set, test_size = 0.1, random_state = 42)
+    test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).shuffle(
+        8192, seed=params.seed).batch(1)
+    train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(
         8192, seed=params.seed).batch(params.n_batches)
     """
         Define loss, model, optimizer
@@ -111,7 +116,7 @@ def train():
         train_accuracy.reset_states()
 
         # inp -> portuguese, tar -> english
-        for (batch, (inp, tar)) in enumerate(full_dataset):
+        for (batch, (inp, tar)) in enumerate(train_dataset):
             train_step(inp, tar)
 
         if batch % 50 == 0:
@@ -128,6 +133,11 @@ def train():
                                                             train_accuracy.result()))
 
         print('Time taken for 1 epoch: {} secs\n'.format(time.time() - start))
-
+    """
+        Evaluation + Test
+    """
+    params.transformer = transformer
+    for inp,tar in test_dataset:
+        translate(inp,tar, params)
 if __name__ == "__main__":
     train()
