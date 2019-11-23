@@ -25,13 +25,11 @@ class parameters():
     n_batches = 10
     epochs = 50
 
-def train(number_sentence):
+def train(params):
     """
     Get dataset and parameters
     """
-    params = parameters()
     tf.random.set_seed(params.seed)
-    params.number_sentence = number_sentence
     input_set, target_set, _, _ = load_data(params)
     input_set, inp_seq_len = pad_sequences(input_set, dtype=np.float32)
     target_set, target_seq_len = pad_sequences(target_set, dtype=np.int64)
@@ -184,15 +182,25 @@ def train(number_sentence):
     return wer
 
 if __name__ == "__main__":
-    number_sentence = [3,5,10,20]
+    number_sentence = [3,5,7,10,20]
+    number_layers = [4,6,8,10,12]
+    dff = [1024,2048,2048,2048,4096]
+    epochs = [50,50,100,100,200]
     wer_lst = []
     cwd = os.path.dirname(os.path.dirname(os.getcwd()))
     result_path = cwd + "/data/results/"
     if not os.path.exists(result_path):
         os.makedirs(result_path)
-
-    for i in number_sentence:
-        wer_lst.append(train(i))
-        pd.DataFrame(wer_lst).to_csv(result_path+
-                                     '/result_{}_sentences.csv'.format(i),
-                                     index = False)
+    """
+        Training loop
+    """
+    for nb_sen,nb_layers,nb_dff,nb_epochs in zip(number_sentence,number_layers,dff,epochs):
+        params = parameters
+        params.number_sentence = nb_sen
+        params.num_layers = nb_layers
+        params.dff = nb_dff
+        params.epochs = nb_epochs
+        wer_lst.append(train(params))
+    pd.DataFrame(wer_lst).to_csv(result_path+
+                                 '/result_{}_sentences.csv'.format(i),
+                                 index = False)
