@@ -12,9 +12,9 @@ from sklearn.model_selection import train_test_split
 class parameters():
     number_sentence = 3
     num_layers = 4
-    d_model = 90
+    d_model = 64
     dff = 1024
-    num_heads = 15
+    num_heads = 4
     input_vocab_size = 0
     target_vocab_size = 0
     dropout_rate = 0.1
@@ -33,7 +33,6 @@ def train(params):
     input_set, target_set, _, _ = load_data(params)
     input_set, inp_seq_len = pad_sequences(input_set, dtype=np.float32)
     target_set, target_seq_len = pad_sequences(target_set, dtype=np.int64)
-    params.d_model = input_set.shape[-1]
     params.target_vocab_size = len(params.dictionary)+1
     params.max_length = len(target_set[0])
     """
@@ -185,7 +184,7 @@ if __name__ == "__main__":
     number_sentence = [3,5,7,10,20]
     number_layers = [4,6,8,10,12]
     dff = [1024,2048,2048,2048,4096]
-    epochs = [50,50,100,100,200]
+    epochs = [50,70,100,100,200]
     wer_lst = []
     cwd = os.path.dirname(os.path.dirname(os.getcwd()))
     result_path = cwd + "/data/results/"

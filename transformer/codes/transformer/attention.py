@@ -37,14 +37,72 @@ def scaled_dot_product_attention(q, k, v, mask):
     output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
 
     return output, attention_weights
+class TwoD_Attention_layer(tf.keras.layers.Layer):
+    def __init__(self,n = 64,c =64):
+        super(TwoD_Attention_layer, self).__init__()
+        self.n = n
+        self.c = c
+        self.convq = tf.keras.layers.Conv2D(c, 3, 1, 'same', kernel_initializer='glorot_normal')
+        self.convk = tf.keras.layers.Conv2D(c, 3, 1, 'same', kernel_initializer='glorot_normal')
+        self.convv = tf.keras.layers.Conv2D(c, 3, 1, 'same', kernel_initializer='glorot_normal')
+        self.conv = tf.keras.layers.Conv2D(n, 3, 1, 'same', kernel_initializer='glorot_normal')
+        self.bnq = tf.keras.layers.BatchNormalization()
+        self.bnk = tf.keras.layers.BatchNormalization()
+        self.bnv = tf.keras.layers.BatchNormalization()
+        self.ln = tf.keras.layers.LayerNormalization()
 
+        self.final_conv1 = tf.keras.layers.Conv2D(n, 3, 1, 'same', activation='relu',
+                                                  kernel_initializer='glorot_normal')
+        self.final_conv2 = tf.keras.layers.Conv2D(n, 3, 1, 'same', kernel_initializer='glorot_normal')
+        self.bnf1 = tf.keras.layers.BatchNormalization()
+        self.bnf2 = tf.keras.layers.BatchNormalization()
+        self.act = tf.keras.layers.Activation('relu')
+
+    def call(self,inputs,training):
+        '''
+
+        :param inputs: B*T*D*n
+        :return: B*T*D*n
+        '''
+        residual = inputs
+        batch_size = tf.shape(inputs)[0]
+        q = self.bnq(self.convq(inputs),training=training)
+        k = self.bnk(self.convk(inputs),training=training)
+        v = self.bnv(self.convv(inputs),training=training)
+
+        q_time = tf.transpose(q,[0,3,1,2])
+        k_time = tf.transpose(k, [0, 3, 1, 2])
+        v_time = tf.transpose(v, [0, 3, 1, 2])
+
+        q_fre = tf.transpose(q,[0,3,2,1])
+        k_fre = tf.transpose(k, [0, 3, 2, 1])
+        v_fre = tf.transpose(v, [0, 3, 2, 1])
+
+        scaled_attention_time, attention_weights_time = scaled_dot_product_attention(
+            q_time, k_time, v_time, None)  # B*c*T*D
+        scaled_attention_fre, attention_weights_fre = scaled_dot_product_attention(
+            q_fre, k_fre, v_fre, None)     # B*c*D*T
+
+        scaled_attention_time = tf.transpose(scaled_attention_time,[0,2,3,1])
+        scaled_attention_fre = tf.transpose(scaled_attention_fre,[0,3,2,1])
+
+        out = tf.concat([scaled_attention_time,scaled_attention_fre],-1) # B*T*D*2c
+
+        out = self.ln(self.conv(out) + residual) # B*T*D*n
+
+        final_out = self.bnf1(self.final_conv1(out),training=training)
+        final_out = self.bnf2(self.final_conv2(final_out),training=training)
+
+        final_out = self.act(final_out + out)
+
+        return final_out
 
 class MultiHeadAttention(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads):
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.d_model = d_model
-
+        print(d_model,self.num_heads)
         assert d_model % self.num_heads == 0
 
         self.depth = d_model // self.num_heads
@@ -88,6 +146,39 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         return output, attention_weights
 
+
+class Pre_Net(tf.keras.layers.Layer):
+    def __init__(self,num_M=2,n=64,c=64):
+        super(Pre_Net, self).__init__()
+        self.num_M = num_M
+
+        self.downsample = tf.keras.layers.Conv2D(n, 3, 2, 'same', activation='tanh',
+                                                 kernel_initializer='glorot_normal')
+        self.bn = tf.keras.layers.BatchNormalization()
+        self.downsample2 = tf.keras.layers.Conv2D(n, 3, 2, 'same', activation='tanh',
+                                                  kernel_initializer='glorot_normal')
+        self.bn2 = tf.keras.layers.BatchNormalization()
+
+        self.TwoD_layers = [TwoD_Attention_layer(n, c) for _ in range(num_M)]
+
+    def call(self,inputs,training=True):
+        '''
+
+        :param inputs: B*T*D*n
+        :return: B*T*D*c
+        '''
+        inputs = tf.cast(inputs,tf.float32)
+        if len(inputs.shape)==3:
+            shape = inputs.shape
+            inputs = tf.reshape(inputs,[shape[0],shape[1],shape[-1],1])
+        out = self.bn(self.downsample(inputs),training=training)
+        out = self.bn2(self.downsample2(out),training=training)
+        print('downsample.shape:',out.shape)
+
+        for i in range(self.num_M):
+            out = self.TwoD_layers[i](out,training)
+
+        return out
 def print_out(q, k, v):
     temp_out, temp_attn = scaled_dot_product_attention(
       q, k, v, None)
@@ -126,3 +217,7 @@ if __name__ == "__main__":
     y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
     out, attn = temp_mha(y, k=y, q=y, mask=None)
     print(out.shape, attn.shape)
+    pre = Pre_Net()
+    temp_inp = tf.random.uniform((64, 400, 90), dtype=tf.float32, minval=0, maxval=200)
+    out = pre(temp_inp)
+    print(out.shape)
