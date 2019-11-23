@@ -87,16 +87,12 @@ def train(params):
         dff=params.dff, target_vocab_size=params.target_vocab_size,
         pe_target=6000)
     checkpoint_path = "./checkpoints/train"
-
+    val_list = []
     ckpt = tf.train.Checkpoint(transformer=transformer,
                                optimizer=optimizer)
 
-    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
+    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path)
 
-    # if a checkpoint exists, restore the latest checkpoint.
-    # if ckpt_manager.latest_checkpoint:
-    #     ckpt.restore(ckpt_manager.latest_checkpoint)
-    #     print('Latest checkpoint restored!!')
     # The @tf.function trace-compiles train_step into a TF graph for faster
     # execution. The function specializes to the precise shape of the argument
     # tensors. To avoid re-tracing due to the variable sequence lengths or variable
@@ -142,7 +138,6 @@ def train(params):
         val_accuracy(tar_real, predictions)
     for epoch in range(params.epochs):
         start = time.time()
-        val_list = []
         train_loss.reset_states()
         train_accuracy.reset_states()
         val_loss.reset_states()
@@ -152,9 +147,7 @@ def train(params):
             train_step(inp, tar)
         for (batch, (inp, tar, seq_len)) in enumerate(val_dataset):
             eval_step(inp, tar)
-        if batch % 50 == 0:
-            print('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(
-                epoch + 1, batch, train_loss.result(), train_accuracy.result()))
+
 
         if (epoch+1)%5 == 0:
             val_wer = 0
@@ -182,8 +175,8 @@ def train(params):
     """
         Evaluation + Test
     """
-    index_min = np.argmin(val_list)
-    ckpt.restore(checkpoint_path++'/ckpt-'+str(int(index_min)*5))
+    index_min = np.argmin(val_list)+1
+    ckpt.restore(checkpoint_path+'/ckpt-'+str(int(index_min*5)))
     params.transformer = transformer
     ground_truth = []
     predicted = []
@@ -194,15 +187,15 @@ def train(params):
         ground_truth.append(gtruth)
         predicted.append(pred)
     test_wer = jwer(ground_truth,predicted)
-    print("word error rate : {}".format(test_wer))
+    print("Test wer : {} for Best val wer : {}".format(test_wer,min(val_list)))
     _, _ = translate(inp, tar, int(seq_len.numpy()), params, 'decoder_layer4_block2', False)
     return test_wer
 
 if __name__ == "__main__":
     number_sentence = [3,5,7,10,20]
-    number_layers = [4,6,8,10,12]
+    number_layers = [4,4,8,8,16]
     number_heads = [16,32,32,64,128]
-    dff = [1024,2048,2048,2048,4096]
+    dff = [1024,1024,2048,2048,4096]
     epochs = [50,70,100,100,200]
     wer_lst = []
     cwd = os.path.dirname(os.path.dirname(os.getcwd()))
