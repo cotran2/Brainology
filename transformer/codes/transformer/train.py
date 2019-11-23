@@ -142,7 +142,7 @@ def train(params):
         val_accuracy(tar_real, predictions)
     for epoch in range(params.epochs):
         start = time.time()
-
+        val_list = []
         train_loss.reset_states()
         train_accuracy.reset_states()
         val_loss.reset_states()
@@ -156,12 +156,8 @@ def train(params):
             print('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(
                 epoch + 1, batch, train_loss.result(), train_accuracy.result()))
 
-        # if (epoch + 1) % 5 == 0:
-        #     ckpt_save_path = ckpt_manager.save()
-        #     print('Saving checkpoint for epoch {} at {}'.format(epoch + 1,
-        #                                                         ckpt_save_path))
         if (epoch+1)%5 == 0:
-            val_wer = None
+            val_wer = 0
             ground_truth = []
             predicted = []
             params.transformer = transformer
@@ -171,6 +167,10 @@ def train(params):
                 predicted.append(pred)
             val_wer = jwer(ground_truth, predicted)
             print("Val word error rate : {}".format(val_wer))
+            val_list.append(val_wer)
+            ckpt_save_path = ckpt_manager.save(checkpoint_number = epoch + 1)
+            print('Saving checkpoint for epoch {} at {}'.format(epoch + 1,
+                                                                   ckpt_save_path))
         print('Epoch {} Train Loss {:.4f} Train Accuracy {:.4f} Val Loss {:.4f} Val Accuracy {:.4f}'.format(
                                                             epoch + 1,
                                                             train_loss.result(),
@@ -182,6 +182,8 @@ def train(params):
     """
         Evaluation + Test
     """
+    index_min = np.argmin(val_list)
+    ckpt.restore(checkpoint_path++'/ckpt-'+str(int(index_min)*5))
     params.transformer = transformer
     ground_truth = []
     predicted = []
@@ -223,5 +225,5 @@ if __name__ == "__main__":
         params.num_heads = nb_heads
         wer_lst.append(train(params))
     pd.DataFrame(wer_lst).to_csv(result_path+
-                                 '/result_{}_sentences.csv'.format(i),
+                                 '/result_sentences.csv'.format(i),
                                  index = False)
