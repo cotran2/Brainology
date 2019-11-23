@@ -148,9 +148,12 @@ class Decoder(tf.keras.layers.Layer):
 
 class Transformer(tf.keras.Model):
     def __init__(self, num_layers, d_model, num_heads, dff,
-                 target_vocab_size, pe_target, rate=0.1):
+                 target_vocab_size, pe_target , rate=0.1, prenet = True):
         super(Transformer, self).__init__()
-
+        if prenet:
+            self.pre_net = Pre_Net()
+        else:
+            self.pre_net = False
         self.encoder = Encoder(num_layers, d_model, num_heads, dff,
                                pe_target,rate)
 
@@ -159,11 +162,11 @@ class Transformer(tf.keras.Model):
 
         self.final_layer = tf.keras.layers.Dense(target_vocab_size)
 
-        self.pre_net = Pre_Net()
     def call(self, inp, tar, training, enc_padding_mask,
              look_ahead_mask, dec_padding_mask):
+        if self.pre_net:
+            inp = self.pre_net(inp, training)
 
-        inp = self.pre_net(inp, training)
 
         enc_output = self.encoder(inp, training, enc_padding_mask)  # (batch_size, inp_seq_len, d_model)
 

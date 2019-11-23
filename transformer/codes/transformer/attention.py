@@ -102,7 +102,6 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.d_model = d_model
-        print(d_model,self.num_heads)
         assert d_model % self.num_heads == 0
 
         self.depth = d_model // self.num_heads
@@ -173,7 +172,6 @@ class Pre_Net(tf.keras.layers.Layer):
             inputs = tf.reshape(inputs,[shape[0],shape[1],shape[-1],1])
         out = self.bn(self.downsample(inputs),training=training)
         out = self.bn2(self.downsample2(out),training=training)
-        print('downsample.shape:',out.shape)
 
         for i in range(self.num_M):
             out = self.TwoD_layers[i](out,training)

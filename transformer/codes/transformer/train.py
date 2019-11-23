@@ -10,11 +10,12 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
 class parameters():
+
     number_sentence = 3
     num_layers = 4
-    d_model = 64
+    d_model = 256
     dff = 1024
-    num_heads = 4
+    num_heads = 16
     input_vocab_size = 0
     target_vocab_size = 0
     dropout_rate = 0.1
@@ -24,6 +25,7 @@ class parameters():
     seed = 1234
     n_batches = 10
     epochs = 50
+    prenet = True
 
 def train(params):
     """
@@ -35,6 +37,9 @@ def train(params):
     target_set, target_seq_len = pad_sequences(target_set, dtype=np.int64)
     params.target_vocab_size = len(params.dictionary)+1
     params.max_length = len(target_set[0])
+    if not params.prenet:
+        params.d_model = input_set[0].shape[-1]
+        params.num_heads = 15
     """
         Splitting
     """
@@ -155,7 +160,17 @@ def train(params):
         #     ckpt_save_path = ckpt_manager.save()
         #     print('Saving checkpoint for epoch {} at {}'.format(epoch + 1,
         #                                                         ckpt_save_path))
-
+        if (epoch+1)%5 == 0:
+            val_wer = None
+            ground_truth = []
+            predicted = []
+            params.transformer = transformer
+            for inp, tar, seq_len in val_dataset:
+                gtruth, pred = translate(inp, tar, seq_len, params, None, False)
+                ground_truth.append(gtruth)
+                predicted.append(pred)
+            val_wer = jwer(ground_truth, predicted)
+            print("Val word error rate : {}".format(val_wer))
         print('Epoch {} Train Loss {:.4f} Train Accuracy {:.4f} Val Loss {:.4f} Val Accuracy {:.4f}'.format(
                                                             epoch + 1,
                                                             train_loss.result(),
@@ -171,18 +186,20 @@ def train(params):
     ground_truth = []
     predicted = []
     wer = None
+
     for inp,tar,seq_len in test_dataset:
         gtruth, pred = translate(inp,tar,seq_len, params, None, False)
         ground_truth.append(gtruth)
         predicted.append(pred)
-    wer = jwer(ground_truth,predicted)
-    print("word error rate : {}".format(wer))
+    test_wer = jwer(ground_truth,predicted)
+    print("word error rate : {}".format(test_wer))
     _, _ = translate(inp, tar, int(seq_len.numpy()), params, 'decoder_layer4_block2', False)
-    return wer
+    return test_wer
 
 if __name__ == "__main__":
     number_sentence = [3,5,7,10,20]
     number_layers = [4,6,8,10,12]
+    number_heads = [16,32,32,64,128]
     dff = [1024,2048,2048,2048,4096]
     epochs = [50,70,100,100,200]
     wer_lst = []
@@ -193,12 +210,17 @@ if __name__ == "__main__":
     """
         Training loop
     """
-    for nb_sen,nb_layers,nb_dff,nb_epochs in zip(number_sentence,number_layers,dff,epochs):
+    for nb_sen,nb_layers,nb_heads,nb_dff,nb_epochs in zip(number_sentence,
+                                                 number_layers,
+                                                 number_heads,
+                                                 dff,
+                                                 epochs):
         params = parameters
         params.number_sentence = nb_sen
         params.num_layers = nb_layers
         params.dff = nb_dff
         params.epochs = nb_epochs
+        params.num_heads = nb_heads
         wer_lst.append(train(params))
     pd.DataFrame(wer_lst).to_csv(result_path+
                                  '/result_{}_sentences.csv'.format(i),
