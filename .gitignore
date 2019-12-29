@@ -11,6 +11,7 @@ __pycache__/
 *.mat
 *.m4a
 *.txt
+*.npy
 
 # Distribution / packaging
 .Python
